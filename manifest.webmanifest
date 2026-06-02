@@ -1,0 +1,16 @@
+{
+  "name": "VALOR · SICAN OS",
+  "short_name": "VALOR",
+  "description": "Sistema Operativo RTI — Industrial Asset Recovery Intelligence",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C0C10",
+  "theme_color": "#F26522",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
