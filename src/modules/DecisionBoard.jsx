@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { ListChecks, Flame } from "lucide-react";
 import { B } from "../lib/theme.js";
 import { eur, fmtDate } from "../lib/theme.js";
-import { Card, SecTitle, EditableTable, KpiCard, Bdg } from "../lib/ui.jsx";
+import { Card, SecTitle, EditableTable, KpiCard, Bdg, RefSelect } from "../lib/ui.jsx";
 import { useStore, companyName } from "../lib/store.jsx";
 
 const PRIORITY_OPTIONS = ["alta", "media", "bassa"];
@@ -23,20 +23,11 @@ export default function DecisionBoard() {
   const cashAtStake = open.reduce((s, d) => s + Math.abs(Number(d.cash_impact) || 0), 0);
 
   function companySelect(row) {
-    return (
-      <select
-        value={data.companies.find((c) => c.id === row.company_id)?.name || ""}
-        onChange={(e) => updateItem("decisions", row.id, { company_id: data.companies.find((c) => c.name === e.target.value)?.id || null })}
-        style={{ padding: "9px 11px", background: B.surface, border: `1px solid ${B.border}`, borderRadius: 8, color: B.white, fontSize: 13, width: "100%" }}
-      >
-        <option value="">—</option>
-        {data.companies.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-      </select>
-    );
+    return <RefSelect value={row.company_id} options={data.companies} onChange={(id) => updateItem("decisions", row.id, { company_id: id })} />;
   }
 
   const columns = [
-    { key: "priority", label: "Priorità", type: "select", options: PRIORITY_OPTIONS, width: 90, render: (row) => <Bdg color={PRIORITY_COLOR[row.priority] || B.gray}>{row.priority || "—"}</Bdg> },
+    { key: "priority", label: "Priorità", type: "select", options: PRIORITY_OPTIONS, width: 100 },
     { key: "title", label: "Decisione", width: 240 },
     { key: "description", label: "Descrizione", width: 220 },
     { key: "company_id", label: "Società", width: 150, render: companySelect },
@@ -62,8 +53,11 @@ export default function DecisionBoard() {
           <SecTitle icon={Flame} title="Da fare oggi — alta priorità" color={B.red} />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {highOpen.map((d) => (
-              <div key={d.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, borderTop: `1px solid ${B.border}`, paddingTop: 8 }}>
-                <span><strong>{d.title}</strong> — {companyName(data.companies, d.company_id)}</span>
+              <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12.5, borderTop: `1px solid ${B.border}`, paddingTop: 8, flexWrap: "wrap" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <Bdg color={PRIORITY_COLOR[d.priority] || B.gray}>{d.priority}</Bdg>
+                  <span><strong>{d.title}</strong> — {companyName(data.companies, d.company_id)}</span>
+                </span>
                 <span style={{ color: B.gray }}>{d.deadline ? `Entro ${fmtDate(d.deadline)}` : "Senza deadline"}</span>
               </div>
             ))}

@@ -104,6 +104,21 @@ export function DemoTag() {
 }
 
 /**
+ * Foreign-key select: option values are entity IDs, never display names,
+ * so duplicate names can't corrupt references.
+ * options: array of entities with {id} plus name/title as label.
+ */
+export function RefSelect({ value, options, onChange, labelKey }) {
+  const labelOf = (o) => (labelKey ? o[labelKey] : null) || o.name || o.title || o.model || o.valor_id || o.id;
+  return (
+    <select value={value ?? ""} onChange={(e) => onChange(e.target.value || null)} style={C.inp}>
+      <option value="">—</option>
+      {options.map((o) => <option key={o.id} value={o.id}>{labelOf(o)}</option>)}
+    </select>
+  );
+}
+
+/**
  * Generic inline-editable data grid.
  * columns: [{ key, label, type: text|number|date|select|percent|checkbox|readonly, options?, width?, render?(row) }]
  */

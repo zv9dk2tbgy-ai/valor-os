@@ -1,6 +1,5 @@
 import { FileText } from "lucide-react";
-import { B } from "../lib/theme.js";
-import { Card, SecTitle, EditableTable } from "../lib/ui.jsx";
+import { Card, SecTitle, EditableTable, RefSelect } from "../lib/ui.jsx";
 import { useStore } from "../lib/store.jsx";
 
 const CATEGORY_OPTIONS = [
@@ -14,16 +13,7 @@ export default function DueDiligence() {
   const { data, updateItem, addItem, removeItem } = useStore();
 
   function relSelect(row, field, options) {
-    return (
-      <select
-        value={options.find((o) => o.id === row[field])?.name || options.find((o) => o.id === row[field])?.title || ""}
-        onChange={(e) => updateItem("documents", row.id, { [field]: options.find((o) => (o.name || o.title) === e.target.value)?.id || null })}
-        style={{ padding: "9px 11px", background: B.surface, border: `1px solid ${B.border}`, borderRadius: 8, color: B.white, fontSize: 13, width: "100%" }}
-      >
-        <option value="">—</option>
-        {options.map((o) => <option key={o.id} value={o.name || o.title}>{o.name || o.title}</option>)}
-      </select>
-    );
+    return <RefSelect value={row[field]} options={options} onChange={(id) => updateItem("documents", row.id, { [field]: id })} />;
   }
 
   const columns = [

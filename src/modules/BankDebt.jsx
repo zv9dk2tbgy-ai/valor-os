@@ -1,38 +1,28 @@
 import { Landmark, AlertTriangle } from "lucide-react";
 import { B } from "../lib/theme.js";
 import { eur, fmtDate } from "../lib/theme.js";
-import { Card, SecTitle, EditableTable, KpiCard } from "../lib/ui.jsx";
+import { Card, SecTitle, EditableTable, KpiCard, RefSelect } from "../lib/ui.jsx";
 import { useStore, companyName } from "../lib/store.jsx";
+import { isActiveObligation } from "../lib/calc.js";
 
 const STATUS_OPTIONS = ["attivo", "variabile", "estinto", "in ritardo"];
 
 export default function BankDebt() {
   const { data, updateItem, addItem, removeItem } = useStore();
 
-  const companyOptions = data.companies.map((c) => c.name);
-  const companyByName = (name) => data.companies.find((c) => c.name === name)?.id || null;
-
-  const totalNow = data.bankObligations.reduce((s, b) => s + (Number(b.monthly_payment) || 0), 0);
-  const totalAfterDec2026 = data.bankObligations
+  const active = data.bankObligations.filter(isActiveObligation);
+  const totalNow = active.reduce((s, b) => s + (Number(b.monthly_payment) || 0), 0);
+  const totalAfterDec2026 = active
     .filter((b) => !b.final_due_date || b.final_due_date > "2026-12-31")
     .reduce((s, b) => s + (Number(b.monthly_payment) || 0), 0);
   const relief = totalNow - totalAfterDec2026;
 
-  const upcoming = data.bankObligations.filter((b) => b.final_due_date && b.final_due_date <= "2026-12-31");
+  const upcoming = active.filter((b) => b.final_due_date && b.final_due_date <= "2026-12-31");
 
   const columns = [
     {
       key: "company_id", label: "Società debitrice", width: 170,
-      render: (row) => (
-        <select
-          value={data.companies.find((c) => c.id === row.company_id)?.name || ""}
-          onChange={(e) => updateItem("bankObligations", row.id, { company_id: companyByName(e.target.value) })}
-          style={{ padding: "9px 11px", background: B.surface, border: `1px solid ${B.border}`, borderRadius: 8, color: B.white, fontSize: 13, width: "100%" }}
-        >
-          <option value="">—</option>
-          {companyOptions.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      ),
+      render: (row) => <RefSelect value={row.company_id} options={data.companies} onChange={(id) => updateItem("bankObligations", row.id, { company_id: id })} />,
     },
     { key: "lender", label: "Banca / Finanziatore", width: 150 },
     { key: "description", label: "Descrizione", width: 200 },

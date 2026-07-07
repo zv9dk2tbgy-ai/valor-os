@@ -1,8 +1,8 @@
 import { Home, Plus, Trash2 } from "lucide-react";
 import { B, C } from "../lib/theme.js";
 import { eur, pct } from "../lib/theme.js";
-import { Card, SecTitle, Bar, DemoTag } from "../lib/ui.jsx";
-import { useStore, companyName } from "../lib/store.jsx";
+import { Card, SecTitle, Bar, DemoTag, RefSelect } from "../lib/ui.jsx";
+import { useStore } from "../lib/store.jsx";
 
 const TEXT_FIELDS = [
   ["address", "Indirizzo"], ["foglio", "Foglio"], ["mappale", "Mappale"], ["particella", "Particella"], ["subalterno", "Subalterno"],
@@ -62,8 +62,10 @@ function ProjectCard({ p, companies, onChange, onDelete }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, marginBottom: 14 }}>
         <FieldText label="Nome progetto" value={p.name} onChange={(v) => onChange("name", v)} />
-        <FieldSelect label="Società proprietaria" value={companyName(companies, p.company_id)} options={companies.map((c) => c.name)}
-          onChange={(name) => onChange("company_id", companies.find((c) => c.name === name)?.id || null)} />
+        <div>
+          <Label>Società proprietaria</Label>
+          <RefSelect value={p.company_id} options={companies} onChange={(id) => onChange("company_id", id)} />
+        </div>
         <FieldText label="Tipo" value={p.type} onChange={(v) => onChange("type", v)} />
       </div>
 
@@ -131,18 +133,6 @@ function FieldNumber({ label, value, onChange }) {
     <div>
       <Label>{label}</Label>
       <input type="number" value={value ?? ""} placeholder="da completare" onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))} style={C.inp} />
-    </div>
-  );
-}
-
-function FieldSelect({ label, value, options, onChange }) {
-  return (
-    <div>
-      <Label>{label}</Label>
-      <select value={value ?? ""} onChange={(e) => onChange(e.target.value)} style={C.inp}>
-        <option value="">—</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
     </div>
   );
 }

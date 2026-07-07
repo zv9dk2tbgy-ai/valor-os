@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Package, ExternalLink } from "lucide-react";
 import { B, C } from "../lib/theme.js";
-import { Card, SecTitle, EditableTable } from "../lib/ui.jsx";
+import { Card, SecTitle, EditableTable, RefSelect } from "../lib/ui.jsx";
 import { useStore } from "../lib/store.jsx";
 import SicanOS from "../legacy/SicanOS.jsx";
 
@@ -17,16 +17,7 @@ export default function ValorAssets() {
     { key: "original_code", label: "Codice originario", width: 120 },
     {
       key: "company_id", label: "Società", width: 150,
-      render: (row) => (
-        <select
-          value={data.companies.find((c) => c.id === row.company_id)?.name || ""}
-          onChange={(e) => updateItem("assets", row.id, { company_id: data.companies.find((c) => c.name === e.target.value)?.id || null })}
-          style={{ padding: "9px 11px", background: B.surface, border: `1px solid ${B.border}`, borderRadius: 8, color: B.white, fontSize: 13, width: "100%" }}
-        >
-          <option value="">—</option>
-          {data.companies.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-        </select>
-      ),
+      render: (row) => <RefSelect value={row.company_id} options={data.companies} onChange={(id) => updateItem("assets", row.id, { company_id: id })} />,
     },
     { key: "category", label: "Categoria", width: 130 },
     { key: "make", label: "Marca", width: 110 },

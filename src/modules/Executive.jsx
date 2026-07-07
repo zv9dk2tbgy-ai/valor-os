@@ -2,15 +2,15 @@ import { useMemo, useState } from "react";
 import { Wallet, Landmark, TrendingDown, TrendingUp, Gauge, CalendarClock, AlertTriangle } from "lucide-react";
 import { B } from "../lib/theme.js";
 import { eur, monthLabel } from "../lib/theme.js";
-import { Card, SecTitle, KpiCard, AlertBanner, Bar, Bdg } from "../lib/ui.jsx";
+import { Card, SecTitle, KpiCard, AlertBanner, Bar, Bdg, EditableTable, RefSelect } from "../lib/ui.jsx";
 import { useStore } from "../lib/store.jsx";
-import { buildProjection, healthScore, buildAlerts, SCENARIOS, cashOnHand } from "../lib/calc.js";
+import { buildProjection, healthScore, buildAlerts, SCENARIOS, cashOnHand, isActiveObligation } from "../lib/calc.js";
 
 const START_YM = "2026-07";
 const END_YM = "2026-12";
 
 export default function Executive() {
-  const { data } = useStore();
+  const { data, updateItem, addItem, removeItem } = useStore();
   const [scenario, setScenario] = useState("realistico");
 
   const projections = useMemo(() => {
@@ -30,11 +30,26 @@ export default function Executive() {
   const score = healthScore(proj);
   const alerts = buildAlerts({ ...proj, bankObligations: data.bankObligations, decisions: data.decisions });
 
-  const onHand = cashOnHand(data.cashPositions);
-  const immediateDebts = data.cashPositions.filter((c) => c.amount < 0).reduce((s, c) => s + c.amount, 0);
-  const monthlyBank = data.bankObligations.reduce((s, b) => s + (Number(b.monthly_payment) || 0), 0);
+  // cashOnHand nets positives and negatives, so it IS the after-debts figure;
+  // grossCash isolates the positive balances for the headline KPI.
+  const netCash = cashOnHand(data.cashPositions);
+  const grossCash = data.cashPositions.filter((c) => (Number(c.amount) || 0) > 0).reduce((s, c) => s + Number(c.amount), 0);
+  const immediateDebts = data.cashPositions.filter((c) => (Number(c.amount) || 0) < 0).reduce((s, c) => s + Number(c.amount), 0);
+  const monthlyBank = data.bankObligations.filter(isActiveObligation).reduce((s, b) => s + (Number(b.monthly_payment) || 0), 0);
   const thisMonthRow = proj.rows[0];
   const decRow = proj.rows[proj.rows.length - 1];
+
+  const totalIn = proj.rows.reduce((s, r) => s + r.entrate, 0);
+  const totalOut = proj.rows.reduce((s, r) => s + r.uscite, 0);
+  const burnRate = proj.rows.length ? totalOut / proj.rows.length : 0;
+  const negIdx = proj.rows.findIndex((r) => r.closing < 0);
+  const runway = negIdx === -1 ? `> ${proj.rows.length} mesi` : negIdx === 0 ? "< 1 mese" : `${negIdx} mes${negIdx === 1 ? "e" : "i"}`;
+  const unschedIn = proj.unscheduled.filter((u) => u.type === "entrata").reduce((s, u) => s + (Number(u.amount) || 0), 0);
+  const bankInWindow = monthlyBank * proj.rows.length;
+  const dscr = bankInWindow > 0 ? (totalIn / bankInWindow) : null;
+  const docsTot = data.documents.length;
+  const docsOk = data.documents.filter((d) => d.status === "presente").length;
+  const docPct = docsTot ? Math.round((docsOk / docsTot) * 100) : null;
 
   const scoreColor = score >= 70 ? B.green : score >= 40 ? B.amber : B.red;
 
@@ -66,12 +81,21 @@ export default function Executive() {
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 12, marginBottom: 16 }}>
-        <KpiCard label="Cassa disponibile oggi" value={eur(onHand)} icon={Wallet} sub="Somma posizioni di cassa correnti" />
-        <KpiCard label="Cassa netta dopo debiti immediati" value={eur(onHand + immediateDebts)} icon={Wallet} sub={`Debiti immediati: ${eur(immediateDebts)}`} alert={onHand + immediateDebts < 0} />
+        <KpiCard label="Cassa disponibile oggi" value={eur(grossCash)} icon={Wallet} sub="Somma saldi attivi" />
+        <KpiCard label="Cassa netta dopo debiti immediati" value={eur(netCash)} icon={Wallet} sub={`Debiti immediati: ${eur(immediateDebts)}`} alert={netCash < 0} />
         <KpiCard label="Impegni bancari mensili" value={eur(monthlyBank)} icon={Landmark} sub="Rate + Telepass + Amex" />
         <KpiCard label={`Saldo previsto fine ${monthLabel(thisMonthRow.ym)}`} value={eur(thisMonthRow.closing)} icon={thisMonthRow.closing >= 0 ? TrendingUp : TrendingDown} alert={thisMonthRow.closing < 0} />
         <KpiCard label="Saldo previsto dicembre 2026" value={eur(decRow.closing)} icon={CalendarClock} alert={decRow.closing < 0} sub={`Scenario ${scenario}`} />
         <KpiCard label="Health score" value={String(score)} color={scoreColor} icon={Gauge} sub="0 = critico, 100 = solido" />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 12, marginBottom: 16 }}>
+        <KpiCard label="Burn rate mensile" value={eur(burnRate)} icon={TrendingDown} sub="Uscite medie mensili nel periodo" />
+        <KpiCard label="Cash runway" value={runway} icon={CalendarClock} alert={negIdx !== -1} color={negIdx !== -1 ? B.red : B.white} sub="Mesi prima del primo saldo negativo" />
+        <KpiCard label="Incassi attesi nel periodo" value={eur(totalIn)} icon={TrendingUp} sub={`Scenario ${scenario}, solo voci con data`} />
+        <KpiCard label="Incassi da programmare" value={eur(unschedIn)} icon={AlertTriangle} alert={unschedIn > 0} sub="Senza data: fuori dalla proiezione" />
+        <KpiCard label="Debt service coverage" value={dscr === null ? "—" : dscr.toFixed(2)} icon={Landmark} alert={dscr !== null && dscr < 1} sub="Incassi attesi / rate bancarie del periodo" />
+        <KpiCard label="Document readiness" value={docPct === null ? "—" : `${docPct}%`} icon={Gauge} sub={docsTot ? `${docsOk}/${docsTot} documenti presenti` : "Nessun documento censito"} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 14, marginBottom: 14 }}>
@@ -99,6 +123,30 @@ export default function Executive() {
           </div>
         </Card>
       </div>
+
+      <Card style={{ marginBottom: 14 }}>
+        <SecTitle icon={Wallet} title="Posizioni di cassa" sub="Saldi positivi e debiti immediati (importo negativo) — base di ogni proiezione" />
+        <EditableTable
+          columns={[
+            {
+              key: "company_id", label: "Società", width: 170,
+              render: (row) => <RefSelect value={row.company_id} options={data.companies} onChange={(id) => updateItem("cashPositions", row.id, { company_id: id })} />,
+            },
+            { key: "label", label: "Descrizione", width: 200 },
+            { key: "amount", label: "Importo € (negativo = debito)", type: "number", width: 150 },
+            { key: "as_of_date", label: "Aggiornato al", type: "date", width: 130 },
+            { key: "source", label: "Fonte", width: 150 },
+            { key: "reliability", label: "Affidabilità", width: 130 },
+            { key: "notes", label: "Note", width: 200 },
+          ]}
+          rows={data.cashPositions}
+          onCellChange={(id, key, value) => updateItem("cashPositions", id, { [key]: value })}
+          onDelete={(id) => removeItem("cashPositions", id)}
+          onAdd={() => addItem("cashPositions", { company_id: null, label: "Nuova posizione", amount: null, as_of_date: null, source: null, reliability: null, notes: null })}
+          addLabel="Aggiungi posizione di cassa"
+          emptyLabel="Nessuna posizione di cassa: la proiezione parte da €0. Aggiungi il saldo conto reale."
+        />
+      </Card>
 
       {proj.unscheduled.length > 0 && (
         <Card>

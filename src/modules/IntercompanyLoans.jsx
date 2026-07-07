@@ -1,27 +1,14 @@
 import { ArrowRightLeft } from "lucide-react";
-import { B } from "../lib/theme.js";
-import { Card, SecTitle, EditableTable } from "../lib/ui.jsx";
+import { Card, SecTitle, EditableTable, RefSelect } from "../lib/ui.jsx";
 import { useStore } from "../lib/store.jsx";
 
 const STATUS_OPTIONS = ["deliberato", "bonificato", "documentato", "da formalizzare"];
 
 export default function IntercompanyLoans() {
   const { data, updateItem, addItem, removeItem } = useStore();
-  const companyOptions = data.companies.map((c) => c.name);
-  const idFor = (name) => data.companies.find((c) => c.name === name)?.id || null;
-  const nameFor = (id) => data.companies.find((c) => c.id === id)?.name || "";
 
   function companySelect(row, field) {
-    return (
-      <select
-        value={nameFor(row[field])}
-        onChange={(e) => updateItem("intercompanyLoans", row.id, { [field]: idFor(e.target.value) })}
-        style={{ padding: "9px 11px", background: B.surface, border: `1px solid ${B.border}`, borderRadius: 8, color: B.white, fontSize: 13, width: "100%" }}
-      >
-        <option value="">—</option>
-        {companyOptions.map((n) => <option key={n} value={n}>{n}</option>)}
-      </select>
-    );
+    return <RefSelect value={row[field]} options={data.companies} onChange={(id) => updateItem("intercompanyLoans", row.id, { [field]: id })} />;
   }
 
   const columns = [

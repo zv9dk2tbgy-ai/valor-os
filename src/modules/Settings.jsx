@@ -1,18 +1,19 @@
-import { useRef } from "react";
-import { Database, Download, Upload, RotateCcw, Trash2, Printer } from "lucide-react";
+import { useRef, useState } from "react";
+import { Database, Download, Upload, RotateCcw, Trash2, Printer, History } from "lucide-react";
 import { B, C } from "../lib/theme.js";
 import { Card, SecTitle } from "../lib/ui.jsx";
 import { useStore } from "../lib/store.jsx";
 import { downloadCSV, downloadJSON, parseCSV } from "../lib/csv.js";
 
-const CASHFLOW_COLUMNS = ["company_id", "project_id", "type", "category", "description", "amount", "due_date", "actual_date", "status", "probability", "source", "responsible", "notes"];
+const CASHFLOW_COLUMNS = ["company_id", "project_id", "asset_id", "type", "category", "description", "amount", "due_date", "actual_date", "status", "probability", "source", "responsible", "notes", "simulateOff"];
 const ASSET_COLUMNS = ["valor_id", "original_code", "company_id", "category", "make", "model", "serial_number", "vin", "location", "condition", "book_value", "estimated_value", "quick_sale_value", "rental_value_monthly", "monetization_strategy", "status", "data_completeness", "notes"];
 
 export default function Settings() {
-  const { data, importJSON, importRows, resetToDemo, clearAll, lastSaved } = useStore();
+  const { data, auditLog, clearAudit, importJSON, importRows, resetToDemo, clearAll, lastSaved } = useStore();
   const jsonInput = useRef(null);
   const cfCsvInput = useRef(null);
   const assetCsvInput = useRef(null);
+  const [auditExpanded, setAuditExpanded] = useState(false);
 
   function exportAllJSON() {
     downloadJSON(`bowser-rti-command-center-${new Date().toISOString().slice(0, 10)}.json`, data);
@@ -48,7 +49,7 @@ export default function Settings() {
       ...r,
       amount: r.amount ? Number(r.amount) : null,
       probability: r.probability ? Number(r.probability) : null,
-      simulateOff: false,
+      simulateOff: r.simulateOff === true || r.simulateOff === "true",
     };
   }
   function castAssetRow(r) {
@@ -113,6 +114,46 @@ export default function Settings() {
           Apre la finestra di stampa del browser sulla pagina corrente (usa "Salva come PDF" nella finestra di stampa). Consigliato dalla schermata Executive Dashboard.
         </div>
         <button style={C.btnGhost} onClick={() => window.print()}><Printer size={13} /> Stampa pagina corrente</button>
+      </Card>
+
+      <Card style={{ marginBottom: 14 }}>
+        <SecTitle icon={History} title="Audit trail delle modifiche" sub={`${auditLog.length} eventi registrati`} />
+        <div style={{ fontSize: 12, color: B.gray, marginBottom: 12 }}>
+          Ogni aggiunta, modifica ed eliminazione viene registrata automaticamente (le digitazioni ravvicinate sullo stesso campo vengono raggruppate). Il log è salvato in locale insieme ai dati.
+        </div>
+        {auditLog.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: B.dim, fontStyle: "italic" }}>Nessuna modifica registrata finora.</div>
+        ) : (
+          <div style={{ overflowX: "auto", maxHeight: auditExpanded ? "none" : 320, overflowY: "auto" }}>
+            <table>
+              <thead>
+                <tr><th>Quando</th><th>Azione</th><th>Sezione</th><th>Voce</th><th>Campo</th><th>Prima</th><th>Dopo</th></tr>
+              </thead>
+              <tbody>
+                {[...auditLog].reverse().slice(0, auditExpanded ? auditLog.length : 30).map((e) => (
+                  <tr key={e.id}>
+                    <td style={{ whiteSpace: "nowrap", color: B.gray }}>{new Date(e.ts).toLocaleString("it-IT")}</td>
+                    <td>{e.action}</td>
+                    <td style={{ color: B.gray }}>{e.collection}</td>
+                    <td>{e.label || "—"}</td>
+                    <td style={{ color: B.gray }}>{e.field || "—"}</td>
+                    <td style={{ color: B.dim }}>{e.before ?? "—"}</td>
+                    <td>{e.after ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+          {auditLog.length > 30 && (
+            <button style={C.btnGhost} onClick={() => setAuditExpanded(!auditExpanded)}>
+              {auditExpanded ? "Mostra solo gli ultimi 30" : `Mostra tutti (${auditLog.length})`}
+            </button>
+          )}
+          <button style={C.btnGhost} onClick={() => downloadCSV("audit-trail.csv", auditLog, ["ts", "action", "collection", "itemId", "label", "field", "before", "after"])}><Download size={13} /> Esporta audit CSV</button>
+          <button style={{ ...C.btnGhost, color: B.red, borderColor: `${B.red}55` }} onClick={() => { if (confirm("Svuotare il log delle modifiche?")) clearAudit(); }}><Trash2 size={13} /> Svuota log</button>
+        </div>
       </Card>
 
       <Card>

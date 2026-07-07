@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Layers, CalendarRange } from "lucide-react";
 import { B } from "../lib/theme.js";
 import { eur, monthLabel } from "../lib/theme.js";
-import { Card, SecTitle, EditableTable, DemoTag } from "../lib/ui.jsx";
+import { Card, SecTitle, EditableTable, DemoTag, RefSelect } from "../lib/ui.jsx";
 import { useStore } from "../lib/store.jsx";
 import { buildProjection, SCENARIOS } from "../lib/calc.js";
 
@@ -22,38 +22,15 @@ export default function CashFlow() {
     startYm: "2026-07", endYm, scenario,
   }), [data, scenario, endYm]);
 
-  const companyOptions = data.companies.map((c) => c.name);
-  const projectOptions = data.projects.map((p) => p.name);
-  const companyByName = (name) => data.companies.find((c) => c.name === name)?.id || null;
-  const projectByName = (name) => data.projects.find((p) => p.name === name)?.id || null;
-
   const columns = [
     { key: "type", label: "Tipo", type: "select", options: TYPE_OPTIONS, width: 90 },
     {
       key: "company_id", label: "Società", width: 160,
-      render: (row) => (
-        <select
-          value={data.companies.find((c) => c.id === row.company_id)?.name || ""}
-          onChange={(e) => updateItem("cashFlowItems", row.id, { company_id: companyByName(e.target.value) })}
-          style={{ padding: "9px 11px", background: B.surface, border: `1px solid ${B.border}`, borderRadius: 8, color: B.white, fontSize: 13, width: "100%" }}
-        >
-          <option value="">—</option>
-          {companyOptions.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      ),
+      render: (row) => <RefSelect value={row.company_id} options={data.companies} onChange={(id) => updateItem("cashFlowItems", row.id, { company_id: id })} />,
     },
     {
       key: "project_id", label: "Progetto", width: 160,
-      render: (row) => (
-        <select
-          value={data.projects.find((p) => p.id === row.project_id)?.name || ""}
-          onChange={(e) => updateItem("cashFlowItems", row.id, { project_id: projectByName(e.target.value) })}
-          style={{ padding: "9px 11px", background: B.surface, border: `1px solid ${B.border}`, borderRadius: 8, color: B.white, fontSize: 13, width: "100%" }}
-        >
-          <option value="">—</option>
-          {projectOptions.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      ),
+      render: (row) => <RefSelect value={row.project_id} options={data.projects} onChange={(id) => updateItem("cashFlowItems", row.id, { project_id: id })} />,
     },
     { key: "category", label: "Categoria", width: 150 },
     { key: "description", label: "Descrizione", width: 220 },

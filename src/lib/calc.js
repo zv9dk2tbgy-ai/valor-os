@@ -31,7 +31,7 @@ export function monthsBetween(startYm, endYm) {
   return out;
 }
 
-function addDaysToYm(dateStr, days) {
+export function shiftDate(dateStr, days) {
   const dt = new Date(dateStr);
   dt.setDate(dt.getDate() + days);
   return dt.toISOString().slice(0, 10);
@@ -39,6 +39,10 @@ function addDaysToYm(dateStr, days) {
 
 export function cashOnHand(cashPositions) {
   return cashPositions.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+}
+
+export function isActiveObligation(bo) {
+  return bo.status !== "estinto";
 }
 
 function entrataIncluded(item, scenario) {
@@ -68,7 +72,7 @@ export function buildProjection({ cashFlowItems, bankObligations, cashPositions,
 
     let dueDate = item.due_date;
     if (isEntrata && scenario === "conservativo" && dueDate) {
-      dueDate = addDaysToYm(dueDate, 45);
+      dueDate = shiftDate(dueDate, 45);
     }
 
     if (!dueDate) {
@@ -85,6 +89,7 @@ export function buildProjection({ cashFlowItems, bankObligations, cashPositions,
 
   // recurring bank obligations
   for (const bo of bankObligations) {
+    if (!isActiveObligation(bo)) continue;
     const monthly = Number(bo.monthly_payment) || 0;
     if (!monthly) continue;
     for (const m of months) {
@@ -137,7 +142,7 @@ export function buildAlerts({ rows, unscheduled, bankObligations, decisions }) {
       alerts.push({ level: "med", text: `Incasso critico senza data confermata: "${u.description}" (${Math.round(u.amount).toLocaleString("it-IT")} €).` });
     }
   }
-  const openDecisionsHigh = (decisions || []).filter((d) => d.priority === "alta" && d.status !== "chiusa" && d.status !== "completata");
+  const openDecisionsHigh = (decisions || []).filter((d) => d.priority === "alta" && !["completata", "annullata"].includes(d.status));
   if (openDecisionsHigh.length) {
     alerts.push({ level: "med", text: `${openDecisionsHigh.length} decisione/i ad alta priorità ancora aperte.` });
   }
